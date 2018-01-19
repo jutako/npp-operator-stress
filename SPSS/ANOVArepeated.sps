@@ -1,0 +1,10 @@
+﻿* Encoding: UTF-8.
+GLM  normalrun postbase prebase run1 run2 run3
+  /WSFACTOR=task 6 Polynomial 
+  /METHOD=SSTYPE(3)
+  /PLOT=PROFILE(task)
+  /EMMEANS=TABLES(OVERALL) 
+  /EMMEANS=TABLES(task) COMPARE ADJ(BONFERRONI)
+  /PRINT=DESCRIPTIVE ETASQ OPOWER HOMOGENEITY 
+  /CRITERIA=ALPHA(.05)
+  /WSDESIGN=task.
