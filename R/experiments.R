@@ -230,7 +230,7 @@ write.table(fd_anova,
 ## Time series plot: task on horizontal axis, with butterfly
 #----------------------------------------------------------------------------
 # Figure 2 in physchophysiology_2016 manuscript
-cat('\n\nPlotting time series - option B: ... \n')
+cat('\n\nPlotting time series: ... \n')
 
 pd1 <- set.plot.data.factors(fdsl, OPTS$nppstress$factors)
 # Note: For factor levels not listed in second arguments NA factor levels are introduced.
