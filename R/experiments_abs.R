@@ -1,14 +1,10 @@
-# A hack to make some analyses using absolute difference from baseline
+# Makes some analyses using absolute difference from baseline.
 # The data used in this script differs from the rest of the nppstress data only
 # in how the baseline correction is made. Here rfdf_absolute() is used instead
 # of rfdf_relative().
 
-# Note: Assumes that nppstress_batch.m has been run before this.
-#source("init.R")
-OPTS$nppstress <- load_settings_nppstress(240, 180, OPTS,
-                                       block.type = 'blocks_event')
+# Note: Has to be called as in batch.R
 
-# todo: run header of nppstress_batch.R first to get things initiated
 require(dplyr)
 
 
@@ -57,15 +53,6 @@ unique(fdst[, .N, by = .(part, role, task, variable)]$N)
 # check that there is only one unique timestamp per part-role-task
 unique(fdst[, length(unique(timestamp)),
             by = .(part, role, task, variable)]$V1)
-
-
-#----------------------------------------------------------------------------
-## Subset all variables to the "maximum value within task"
-# Can be used to compare with halden abstracts.
-
-# fdlas <-  fdla %>%
-#           group_by(task, subject, variable) %>%
-#           summarise(n=length(value), avg=mean(value), max=max(value))
 
 
 #--------------------------------------------------------------------------

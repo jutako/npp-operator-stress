@@ -1,20 +1,12 @@
-# This script is used to procude figures and some tables for the summer 16 manuscript
+# This script is used to procude figures and tables for the
+# Psychophysiology manuscript
 #
 # This script:
 # * loads HRV and stress data
 # * makes plots
 # * makes result tables
 
-# Note: Has to be called as in nppstress_batch.R!
-#
-#If called outside nppstress_batch() set OPTS$nppstress like this:
-# rm(list = ls())
-# source("init.R")
-# source("analysis/summer_paper_2016/nppstress_utils.R")
-# OPTS <- loadSettings()
-# OPTS$nppstress <- load_settings_nppstress(60, 45, OPTS)
-# OPTS$nppstress <- load_settings_nppstress(240, 180, OPTS)
-# dir.lst.create(OPTS$nppstress[grep('dir\\..*', names(OPTS$nppstress) , value = T)])
+# Note: Has to be called as in batch.R
 
 require(ggplot2)
 require(gridExtra)
@@ -43,6 +35,8 @@ aggvarArr <- OPTS$nppstress$factors$feat$levels
 colors.three.qualitative <- OPTS$nppstress$colors.3.qualitative#c('#1b9e77','#d95f02','#7570b3')
 
 A4_ASPR = 210 / 297 # A4 aspect ratio
+
+
 
 #----------------------------------------------------------------------------
 ## Task durations
@@ -231,75 +225,9 @@ write.table(fd_anova,
 # table2disk(sbjsumm, outdir.rtb, 'subject_statistics2')
 
 
-#----------------------------------------------------------------------------
-## Time series type A, timestamp on horizontal axis
-#----------------------------------------------------------------------------
-cat('\n\nPlotting time series: ... \n')
-
-pd <- set.plot.data.factors(fdsl, OPTS$nppstress$factors)
-pd <- filter(pd, !is.na(variable))
-key_ev_arr <- as.character(unique(pd$task))
-
-# add simulation time in minutes from first cseg
-add_simtime <- function(ds){
-  ds$simtime <- as.numeric(difftime(ds$timestamp,
-                                    min(ds$timestamp, na.rm = T),
-                                    units = 'min'))
-  ds
-}
-pd <-  pd %>%
-    dplyr::group_by(part) %>%
-    dplyr::do(add_simtime(.))
-
-# create 'crew'
-pd$crew <- gsub('P', 'C', as.character(pd$part))
-
-
-myplot1 <- function(ds, vlined){
-  ymax <- max(ds$value)
-  p <- ggplot(data = ds)
-  p <- p + geom_point(aes(x = simtime, y = value,
-                         group = role, color = role))
-  p <- p + geom_line(aes(x = simtime, y = value,
-                         group = role, color = role))
-  # p <- p + geom_point(aes(x = simtime, y = value),
-  #                    data = subset(ds, task %in% key_ev_arr)
-  p <- p + geom_vline(aes(xintercept = simtime), data = vlined)
-  p <- p + geom_text(aes(x = simtime, y = ymax, label = task,
-                         vjust = 1, hjust = 1, angle = 90),
-                     size = 2.5, data = vlined)
-  #p <- p + theme(legend.position="none")
-  p <- p + facet_grid(crew ~ .)
-  p <- p + labs(title = sprintf('%s',unique(ds$variable)),
-                x = 'Simulation time (min)',
-                y = 'Raw feature value')
-  p
-}
-
-
-savepath <- file.path(OPTS$nppstress$dir.fig, 'tsplot_picked-cseg')
-dir.create(savepath, recursive = T, showWarnings = F)
-
-for (cvar in unique(pd$variable)){
-  cat(sprintf('\nPlotting variable: %s ... \n', cvar))
-  pds <- subset(pd, (variable == cvar))
-
-  vlined <- subset(pds, (task %in% key_ev_arr) & (role == 'RO'))
-  vlined <- vlined[, c('crew','task','simtime')]
-
-  p <- myplot1(pds, vlined)
-  savefile <- file.path(savepath, sprintf('%s.png',
-                                          stringr::str_replace(cvar, '/', '') ))
-  cowplot::ggsave(p, file = savefile, width = 15, height = 30, units = 'cm')
-
-  rm(p, pds, vlined, savefile) #cleanup
-}
-
-rm(pd) #cleanup
-
 
 #----------------------------------------------------------------------------
-## Time series type B, task on horizontal axis, with butterfly
+## Time series plot: task on horizontal axis, with butterfly
 #----------------------------------------------------------------------------
 # Figure 2 in physchophysiology_2016 manuscript
 cat('\n\nPlotting time series - option B: ... \n')
@@ -362,120 +290,8 @@ do.call(grid.arrange, c(gtlst, list(ncol = 2)) )
 #do.call(grid.arrange, c(plst2, list(ncol = 1)) )
 dev.off()
 
-# savefile <- file.path(outdir.figs, 'mean_feature_values_butterfly.pdf')
-# pdf(file = savefile, width = w.in, height = h.in, pointsize = 2)
-# do.call(grid.arrange, c(gtlst, list(ncol = 3)) )
-# #render_plot(plst2) #this ends up making a two page pdf
-# dev.off()
-
+# cleanup
 rm(pd1, pd2, fdsls, plst, gtlst, savefile)
-
-# #---------------------------------------------
-# w.in <- 4
-# h.in <- 2.5*w.in
-# w.px <- 300
-# h.px <- 2.5*w.px
-#
-# varset <- c('obj.stress','ibi_medianhr','ibi_rmssd','ibi_stdev','ibi_sdfrac')
-# fvarset <- map.values(varset,
-#                       OPTS$nppstress$factors$feat$levels,
-#                       OPTS$nppstress$factors$feat$labels)
-# #colset <- c(colors.three.qualitative[1], rep(colors.three.qualitative[3],3))
-# colset = c(rgb(0/255, 68/255, 130/255), rep(rgb(49/255, 49/255, 149/255),4) )
-# letset <- c('a)','b)','c)','d)','e)')
-# plst1 <- make.plot.set(fvarset, colset, letset, pd2, pd1, c(0.1, 2))
-# gtlst1 <- adjust_gtables(plst1)
-#
-# savefile <- file.path(outdir.figs, 'mean_feature_values_butterfly1.png')
-# png(filename = savefile, units = 'px', width = w.px, height = h.px)
-# do.call(grid.arrange, c(gtlst1, list(ncol = 1)) )
-# dev.off()
-#
-# # savefile <- file.path(outdir.figs, 'mean_feature_values_butterfly1.pdf')
-# # pdf(file = savefile, width = w.in, height = h.in, pointsize = 2)
-# # render_plot(plst1)
-# # dev.off()
-#
-# savefile <- file.path(outdir.figs, 'mean_feature_values_butterfly1.pdf')
-# pdf(file = savefile, width = w.in, height = h.in, pointsize = 2)
-# do.call(grid.arrange, c(gtlst1, list(ncol = 1)) )
-# dev.off()
-#
-# # savefile <- file.path(outdir.figs, 'mean_feature_values_butterfly1.eps')
-# # cairo_ps(savefile, width = w.in, height = h.in, pointsize = 2)
-# # render_plot(plst1)
-# # #do.call(grid.arrange, c(plst1, list(ncol = 1)) )
-# # dev.off()
-#
-# # Outliers:
-# # subset(pd1, variable == "RMSSD" & value > 1.4 & task == 'SCN2') #P2 - RO -> CORE201506
-# # subset(pd1, variable == "SDfrac" & value > 1.4 & task == 'SCN2') #P2 - RO
-#
-# #---------------------------------------------
-#
-# varset <- c('self.stress_max','ibi_lf','ibi_hf','ibi_lfhf')
-# fvarset <- map.values(varset,
-#                       OPTS$nppstress$factors$feat$levels,
-#                       OPTS$nppstress$factors$feat$labels)
-# #colset <- c(colors.three.qualitative[2], rep(colors.three.qualitative[3],3))
-# colset = c(rgb(0/255, 68/255, 130/255), rep(rgb(49/255, 49/255, 149/255),3) )
-# letset <- c('e)','f)','g)','h)')
-# plst2 <- make.plot.set(fvarset, colset, letset, pd2, pd1, c(0.3, 2))
-# gtlst2 <- adjust_gtables(plst2)
-#
-# savefile <- file.path(outdir.figs, 'mean_feature_values_butterfly2.png')
-# png(filename = savefile, units = 'px', width = w.px, height = h.px)
-# do.call(grid.arrange, c(gtlst2, list(ncol = 1)) )
-# #render_plot(plst2)
-# #do.call(grid.arrange, c(plst2, list(ncol = 1)) )
-# dev.off()
-#
-# savefile <- file.path(outdir.figs, 'mean_feature_values_butterfly2.pdf')
-# pdf(file = savefile, width = w.in, height = h.in, pointsize = 2)
-# do.call(grid.arrange, c(gtlst2, list(ncol = 1)) )
-# #render_plot(plst2) #this ends up making a two page pdf
-# #do.call(grid.arrange, c(plst2, list(ncol = 1)) )
-# dev.off()
-#
-# # savefile <- file.path(outdir.figs, 'mean_feature_values_butterfly2.eps')
-# # cairo_ps(savefile, width = w.in, height = h.in, pointsize = 2)
-# # render_plot(plst2)
-# # #do.call(grid.arrange, c(plst2, list(ncol = 1)) )
-# # dev.off()
-#
-# #---------------------------------------------
-#
-# varset <- c('self.stress_max','ibi_lf.nu','ibi_hf.nu','ibi_lfhf',
-#             'Accelerometer_XYZ_mean')
-# fvarset <- map.values(varset,
-#                       OPTS$nppstress$factors$feat$levels,
-#                       OPTS$nppstress$factors$feat$labels)
-# #colset <- c(colors.three.qualitative[2], rep(colors.three.qualitative[3],3))
-# colset = c(rgb(0/255, 68/255, 130/255), rep(rgb(49/255, 49/255, 149/255),4) )
-# letset <- c('j)','k)','l)','m)','n)')
-# plst2 <- make.plot.set(fvarset, colset, letset, pd2, pd1, c(0.3, 2))
-# gtlst2 <- adjust_gtables(plst2)
-#
-# savefile <- file.path(outdir.figs, 'mean_feature_values_butterfly3.png')
-# png(filename = savefile, units = 'px', width = w.px, height = h.px)
-# do.call(grid.arrange, c(gtlst2, list(ncol = 1)) )
-# #render_plot(plst2)
-# #do.call(grid.arrange, c(plst2, list(ncol = 1)) )
-# dev.off()
-#
-# savefile <- file.path(outdir.figs, 'mean_feature_values_butterfly3.pdf')
-# pdf(file = savefile, width = w.in, height = h.in, pointsize = 2)
-# do.call(grid.arrange, c(gtlst2, list(ncol = 1)) )
-# #render_plot(plst2) #this ends up making a two page pdf
-# #do.call(grid.arrange, c(plst2, list(ncol = 1)) )
-# dev.off()
-#
-# # savefile <- file.path(outdir.figs, 'mean_feature_values_butterfly2.eps')
-# # cairo_ps(savefile, width = w.in, height = h.in, pointsize = 2)
-# # render_plot(plst2)
-# # #do.call(grid.arrange, c(plst2, list(ncol = 1)) )
-# # dev.off()
-
 
 
 
@@ -488,6 +304,7 @@ cat('\n\nComputing similarity measures: ... \n')
 # Compute correlations
 #Note: errors occur if NA values have been removed from fdsl
 
+# Compute similarity using simfun as measure
 ddply.compute.similarity <- function(daf, stressdf, simfun){
   daf <- dplyr::arrange(daf, part, role, task)
   stresstmp <- dplyr::filter(stressdf, (role == unique(daf$role)) &
@@ -507,21 +324,6 @@ crd1 <- ddply(fdsl, .(role, part, variable), ddply.compute.similarity,
 crd1$stressvar <- 'predSTRESS'
 # here some NA's come from odd nnx values and missing self stress reports
 
-# test <- fdsl %>%
-#         select(-timestamp) %>%
-#         spread(variable, value) %>%
-#         group_by(role, part) %>%
-#         summarise(n = n(),
-#                   cor = cor(Accelerometer_XYZ_mean, obj.stress)) %>%
-#         arrange(part, role)
-#
-# crd1 %>% filter(variable == 'Accelerometer_XYZ_mean') %>%
-#       arrange(part, role)
-# tmp <- fdsl %>%
-#       select(-timestamp) %>%
-#       spread(variable, value) %>%
-#       filter(part == 'P6', role == 'RO') %>%
-#       select(part, role, task, Accelerometer_XYZ_mean, obj.stress, self.stress_max)
 
 
 crd2 <- ddply(fdsl, .(role, part, variable), ddply.compute.similarity,
@@ -537,16 +339,6 @@ crd3$stressvar <- 'ACCmeanXYZ'
 # here some NA's come from odd nnx values and missing self stress reports
 
 crd <- dplyr::tbl_df(rbind(crd1, crd2, crd3))
-
-
-# debug:
-# tmp <- subset(crd, variable == 'pnnx50_mean')
-# tmp <- tmp[complete.cases(tmp$cor),]
-# tmp$rsq <- tmp$cor^2
-# tmp %>% dplyr::group_by(stressvar) %>%
-#         dplyr::summarise(n = n(), mean = mean(cor))
-# tmp %>% dplyr::group_by(stressvar) %>%
-#   dplyr::summarise(n = n(), mean = mean(rsq))
 
 
 # ----------------------------------------------------------------------------
@@ -608,19 +400,6 @@ cowplot::ggsave(savefile, cp, width = h.mm, height = w.mm, units = 'mm',
 
 rm(pd2, p, p2, cp, savefile)
 
-# w_mm <- 300
-# h_mm <- 200
-# dpi <- 300
-# savefile <- file.path(outdir.figs, 'cor_distributions.pdf')
-# ggsave(p, filename = savefile, units = 'mm', width = w_mm, height = h_mm, dpi=dpi)
-#
-# savefile <- file.path(outdir.figs, 'cor_distributions.png')
-# ggsave(p, filename = savefile, units = 'mm', width = w_mm, height = h_mm, dpi=dpi)
-#
-# savefile <- file.path(outdir.figs, 'cor_distributions.eps')
-# ggsave(p, filename = savefile, units = 'mm', width = w_mm, height = h_mm, dpi=dpi,
-#        device = cairo_ps)
-
 
 ## Another version with cowplot arrangement
 
@@ -671,83 +450,7 @@ cowplot::ggsave(savefile, cp, width = h.mm, height = w.mm, units = 'mm',
 rm(pd, pd2, p, p2, cp, savefile, crd_plot)
 
 
-# # -----------------------------------------------------------------------------
-# # First set (original submission)
-# plotVarArr <- c("ibi_medianhr",
-#          "ibi_rmssd", "ibi_stdev", "ibi_sdfrac",
-#          "ibi_lf","ibi_hf", "ibi_lfhf",
-#          "ibi_lf.nu", "ibi_hf.nu", "Accelerometer_XYZ_mean") #10 features
-# pd <- dplyr::filter(crd_plot, (variable %in% plotVarArr) & (stressvar %in% c('repSTRESS','predSTRESS')))
-# pd <- set.plot.data.factors(pd, OPTS$nppstress$factors)
-#
-# p <- plot_corbox(pd)
-#
-# savefile <- file.path(outdir.figs, 'cor_distributions_set1.pdf')
-# ggsave(p, filename = savefile, units = 'mm', width = 250, height = 100, dpi=100)
-#
-# savefile <- file.path(outdir.figs, 'cor_distributions_set1.png')
-# ggsave(p, filename = savefile, units = 'mm', width = 250, height = 100, dpi=100)
-#
-# savefile <- file.path(outdir.figs, 'cor_distributions_set1.eps')
-# ggsave(p, filename = savefile, units = 'mm', width = 250, height = 100, dpi=100,
-#        device = cairo_ps)
-#
-# # -----------------------------------------------------------------------------
-# # First set (reviewer requests + others up to 10)
-# plotVarArr2 <- c("obj.stress", "self.stress_max", "ibi_sd1",
-#                 "ibi_sd2", "ibi_triangular.index", "ibi_sampen",
-#                 "ibi_vlf", "ibi_meanhr", "ibi_tinn",
-#                 "Accelerometer_XYZ_sd") #10 features
-# pd2 <- dplyr::filter(crd_plot, (variable %in% plotVarArr2) & (stressvar %in% c('repSTRESS','predSTRESS')))
-# pd2 <- set.plot.data.factors(pd2, OPTS$nppstress$factors)
-#
-# p2 <- plot_corbox(pd2)
-#
-# savefile <- file.path(outdir.figs, 'cor_distributions_set2.pdf')
-# ggsave(p2, filename = savefile, units = 'mm', width = 250, height = 100, dpi=100)
-#
-# savefile <- file.path(outdir.figs, 'cor_distributions_set2.png')
-# ggsave(p2, filename = savefile, units = 'mm', width = 250, height = 100, dpi=100)
-#
-# savefile <- file.path(outdir.figs, 'cor_distributions_set2.eps')
-# ggsave(p2, filename = savefile, units = 'mm', width = 250, height = 100, dpi=100,
-#        device = cairo_ps)
-
-
-# Figure out who are the outliers:
-
-# Add information on medication
-# mc <- getMeasConfMaster(OPTS$mc.master.file)
-# tmp <- dplyr::left_join(mc$subject, mc$measurement[,c('subject','part')], by = "subject")
-# tmp <- create_factors(tmp, OPTS)
-# pd <- dplyr::left_join(pd, tmp[,c("role","part","hasMedication")], by = c("role","part"))
-#
-# p <- ggplot(data = pd)
-# p <- p + geom_boxplot(aes(x = stressvar, y = cor))
-# p <- p + geom_jitter(aes(x = stressvar, y = cor,
-#                          color = factor(hasMedication),
-#                          shape = part), alpha = 0.5,
-#                      position = position_jitter(height = 0, width = 0.25))
-# p <- p + geom_hline(aes(yintercept = 0), color = 'red')
-# p <- p + facet_grid(. ~ variable)
-# p <- p + theme_light()
-# #p <- p + theme(axis.text.x = element_text(angle = 45, hjust = 1))
-# p <- p + labs(x = 'stress evaluation', y = 'correlation')
-# p
-
-# require(plotly)
-# plotly::ggplotly(p)
-# stress.var <- "inst" #"oper"
-# d1 <- subset(pd, stressvar == "inst" & variable == 'RMSSD' & cor > 0.1)
-# d2 <- subset(pd, stressvar == "inst" & variable == 'HF' & cor > 0.1)
-# d3 <- subset(pd, stressvar == "inst" & variable == 'HR' & cor < 0.5)
-# rbind(d1, d2, d3)
-#
-# subset(pd, stressvar == "oper" & variable == 'HF' & cor > 0.35)
-#
-
-
-
+# ----------------------------------------------------------------------------
 # Result table
 ct <-   crd %>%
         group_by(variable, stressvar) %>%
@@ -764,28 +467,25 @@ options(digits = 2)
 filter(ct, stressvar == 'repSTRESS') %>% select(c('variable','mean','sd'))
 filter(ct, stressvar == 'predSTRESS') %>% select(c('variable','mean','sd'))
 
-# Test significance using T-test
 
-# td <- subset(crd, variable %in% aggvarArr[1])
-# td <- tidyr::spread(td, stressvar, cor)
-# tr <- t.test(td$predSTRESS, td$repSTRESS, paired = T, na.rm = T)
-# tr$p.value
-# mean(td$predSTRESS, na.rm = T) - mean(td$repSTRESS, na.rm = T)
-
-workfun <- function(daf){
-  tr <- t.test(daf$predSTRESS, daf$repSTRESS, paired = T, na.rm = T)
-  data.frame( n = nrow(daf),
-              t = tr$statistic,
-              df = tr$parameter,
-              p.value = tr$p.value,
-              method = tr$method,
-              alternative = tr$alternative)
-}
-
-res <- ddply(tidyr::spread(crd, stressvar, cor), .(variable), workfun)
-subset(res, (res$p.value < 0.05) &
-         !(variable %in% c('obj.stress_max','self.stress_max')) )
-rm(workfun)
+# TODO: this is not actually used?
+# # Test significance using T-test
+#
+# # Compute t-test for a subset of data 'daf'
+# workfun <- function(daf){
+#   tr <- t.test(daf$predSTRESS, daf$repSTRESS, paired = T, na.rm = T)
+#   data.frame( n = nrow(daf),
+#               t = tr$statistic,
+#               df = tr$parameter,
+#               p.value = tr$p.value,
+#               method = tr$method,
+#               alternative = tr$alternative)
+# }
+#
+# res <- ddply(tidyr::spread(crd, stressvar, cor), .(variable), workfun)
+# subset(res, (res$p.value < 0.05) &
+#          !(variable %in% c('obj.stress_max','self.stress_max')) )
+# rm(workfun)
 
 
 # Bootstrap mean correlation values to get 95% CI
@@ -798,16 +498,9 @@ dmean <- function(data, indices) {
   mean(d, na.rm = T)
 }
 
+# Do bootstrap for a subset of data 'daf'
 workfun <- function(daf){
-  #sprintf("%s\n", unique(daf$variable))
-  # bootstrapping with N_BOOT replications
-  #cvar <- 'ibi_medianhr'
-  #daf <- subset(crd, (variable == cvar) & (stressvar == 'ACCmeanXYZ'))
 
-  #if (sum(is.na(daf$cor)) > 1){ browser() }
-  #daf <- daf[complete.cases(daf$cor), ]
-
-  #if ( sum(abs( abs(daf$cor)-1 ) < 1e-10) == nrow(daf)){
   all_equal <-  near(daf$cor, daf$cor[1]) %>%
                 all()
   all_near_one <- near(abs(daf$cor),1) %>%
@@ -1072,7 +765,7 @@ rm(tmp_tb)
 
 
 # -------------------------------------------------------------------
-# Make a publication ready table
+# Make a publication ready table of correlations
 #
 # Saving in latex booktabs style was not easy ->
 # see also correlation_table.Rmd for the final table
@@ -1116,15 +809,6 @@ pval2str_vec <- function(pval_arr){
 }
 
 
-# numcat <- function(num1, num2, sep){
-#   sprintf('%3.2f%s%3.2f', num1, sep, num2)
-# }
-#
-# numcat_vec <- function(num1_arr, num2_arr, sep){
-#   mapply(numcat, num1_arr, num2_arr, sep)
-# }
-# #numcat_vec(c(3.234, 4.567), c(3.234, 4.567) , " / ")
-
 corr.res3 <-  corr.res2 %>%
               filter(stressvar %in% c('predSTRESS','repSTRESS'), variable %in% var_arr) %>%
               mutate(variable = ordered(as.character(variable),
@@ -1144,10 +828,6 @@ corr.res3 <-  corr.res2 %>%
               select(variable,
                       repSTRESS_meansd, repSTRESS_bci, repSTRESS_obs.z, repSTRESS_sig,
                       predSTRESS_meansd, predSTRESS_bci, predSTRESS_obs.z, predSTRESS_sig)
-
-# select(variable,
-#        repSTRESS_meansd, repSTRESS_mean, repSTRESS_sd, repSTRESS_bca.low, repSTRESS_bca.up, repSTRESS_obs.z, repSTRESS_sig,
-#        predSTRESS_meansd, predSTRESS_mean, predSTRESS_sd, predSTRESS_bca.low, predSTRESS_bca.up, predSTRESS_obs.z, predSTRESS_sig,)
 
 corr.res3 %>% View()
 
@@ -1259,22 +939,6 @@ for (cvar in aggvarArr){
 
   dev.off()
 }
-
-
-# debug
-# area depends on argument order!
-# cvar <- 'ibi_rmssd'
-# cvar <- 'ibi_medianhr'
-# data_list <- list(fdvw[,cvar], fdvw$self.stress_max, fdvw$obj.stress)
-# perms_mat <- perms(1:3)
-# for (i in 1:nrow(perms_mat)){
-#   # Compute shared variance
-#   sv <- shared.variance.decomp(data_list[[perms_mat[i,1]]],
-#                                data_list[[perms_mat[i,2]]],
-#                                data_list[[perms_mat[i,3]]])
-#   cat(sprintf('1-2-3: %f \n', sum(sv$areas[1, 4:7]) ))
-# }
-
 
 
 #----------------------------------------------------------------------------
